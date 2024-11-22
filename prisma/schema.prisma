@@ -1,0 +1,132 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  role          UserRole  @default(CANDIDATE)
+  accounts      Account[]
+  sessions      Session[]
+  jobs          Job[]
+  applications  JobApplication[]
+  company       Company?
+}
+
+enum UserRole {
+  ADMIN
+  EMPLOYER
+  CANDIDATE
+}
+
+model Company {
+  id          String   @id @default(cuid())
+  name        String
+  logo        String?
+  website     String?
+  description String?
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id])
+  jobs        Job[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Job {
+  id              String    @id @default(cuid())
+  title           String
+  description     String
+  type            JobType
+  location        String
+  remote          Boolean   @default(false)
+  salaryMin       Int
+  salaryMax       Int
+  currency        String    @default("USD")
+  requirements    String
+  skills          String
+  experienceLevel String
+  companyId       String
+  company         Company   @relation(fields: [companyId], references: [id])
+  userId          String
+  user            User      @relation(fields: [userId], references: [id])
+  applications    JobApplication[]
+  views          Int       @default(0)
+  status         JobStatus @default(ACTIVE)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  expiresAt      DateTime?
+
+  @@index([companyId])
+  @@index([userId])
+}
+
+enum JobType {
+  FULL_TIME
+  PART_TIME
+  CONTRACT
+  INTERNSHIP
+}
+
+enum JobStatus {
+  DRAFT
+  ACTIVE
+  CLOSED
+  EXPIRED
+}
+
+model JobApplication {
+  id          String   @id @default(cuid())
+  jobId       String
+  userId      String
+  status      ApplicationStatus @default(PENDING)
+  resume      String?
+  coverLetter String?
+  job         Job      @relation(fields: [jobId], references: [id])
+  user        User     @relation(fields: [userId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([jobId, userId])
+}
+
+enum ApplicationStatus {
+  PENDING
+  REVIEWING
+  ACCEPTED
+  REJECTED
+}
